@@ -26,8 +26,18 @@ dadosCEAP <- read.csv("dadosCEAP.csv", encoding = "UTF-8")
 Para responder a essa questão, as colunas <b>sgPartido</b> e <b>valorLíquido</b> serão filtrados:
 
 ```{r}
-partidos_por_gastos <- dadosCEAP %>% select(sgPartido, valorLíquido) %>%
+gastos_por_partido <- dadosCEAP %>% select(sgPartido, valorLíquido) %>%
                  group_by(sgPartido) %>% summarise(gasto_total_partido = sum(valorLíquido)) %>%
   arrange(desc(gasto_total_partido))
 ```
 
+Um gráfico de barras é plotado com os gastos de cada partido em ordem decrescente:
+```{r}
+ggplot(gastos_por_partido, aes(x = reorder(sgPartido, gasto_total_partido), y = gasto_total_partido), options(scipen = 5)) + 
+  geom_bar(stat = "identity") + 
+  xlab("Partidos") + #eixo X
+  ylab("Valor total gasto") + #eixo Y
+  coord_flip()
+```
+
+Decidiu-se manter os gastos <b>NA</b> caso fosse necessário usá-lo depois.
