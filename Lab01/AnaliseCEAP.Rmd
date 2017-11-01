@@ -9,13 +9,25 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-<h1>An�lise de Gastos de Deputados: Nossas Perguntas</h1>
+<h1>Análise de Gastos de Deputados: Nossas Perguntas</h1>
 
-Importando pacotes que ser�o utilizados:
-```{r}
+Importando pacotes que serão utilizados e carregando os dados:
+```{r libraries}
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+
+dadosCEAP <- read.csv("dadosCEAP.csv", encoding = "UTF-8")
 ```
 
+
+<b>1. Quais os partidos que mais fazem uso da CEAP? Quais os partidos que menos fazem uso?</b>
+
+Para responder a essa questão, as colunas <b>sgPartido</b> e <b>valorLíquido</b> serão filtrados:
+
+```{r}
+partidos_por_gastos <- dadosCEAP %>% select(sgPartido, valorLíquido) %>%
+                 group_by(sgPartido) %>% summarise(gasto_total_partido = sum(valorLíquido)) %>%
+  arrange(desc(gasto_total_partido))
+```
 
