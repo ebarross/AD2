@@ -20,16 +20,17 @@ library(ggplot2)
 dadosCEAP <- read.csv("dadosCEAP.csv", encoding = "UTF-8")
 ```
 
-
+<br>
 <b>1. Quais os partidos que mais fazem uso da CEAP? Quais os partidos que menos fazem uso?</b>
 
-Para responder a essa questão, as colunas <b>sgPartido</b> e <b>valorLíquido</b> serão filtrados:
+Para responder a essa questão, os atributos <b>sgPartido</b> e <b>valorLíquido</b> serão filtrados:
 
 ```{r}
 gastos_por_partido <- dadosCEAP %>% select(sgPartido, valorLíquido) %>%
                  group_by(sgPartido) %>% summarise(gasto_total_partido = sum(valorLíquido)) %>%
   arrange(desc(gasto_total_partido))
 ```
+
 
 Um gráfico de barras é plotado com os gastos de cada partido em ordem decrescente:
 ```{r}
@@ -40,4 +41,110 @@ ggplot(gastos_por_partido, aes(x = reorder(sgPartido, gasto_total_partido), y = 
   coord_flip()
 ```
 
-Decidiu-se manter os gastos <b>NA</b> caso fosse necessário usá-lo depois.
+Decidiu-se manter os gastos de <b>NA</b> caso fosse necessário usá-lo depois.
+
+<br>
+<p>2. Quais os tipos de despesa mais comuns no uso da CEAP? Mesma pergunta considerando valores em R$.</p>
+
+Para responder essa pergunta, filtra-se o atributo <b>tipoDespesa</b> e verifica-se a ocorrência de cada tipo:
+```{r}
+tipo_despesa <- dadosCEAP %>% 
+  select(tipoDespesa) %>% 
+  group_by(tipoDespesa) %>%
+  summarise(n_despesa = n()) %>%
+  arrange(desc(n_despesa))
+```
+
+Plota-se um gráfico de barras para melhor analisar o número de cada tipo de despesa:
+```{r}
+ggplot(tipo_despesa, aes(x = reorder(tipoDespesa, n_despesa), y = n_despesa), options(scipen = 5)) +
+  geom_bar(stat = "identity") +
+  xlab("Tipo de Despesa") + #eixo X
+  ylab("Ocorrências") + #eixo Y
+  coord_flip()
+```
+
+A partir do gráfico, é possível perceber que o tipo mais comum de despesa é a Emissão de Bilhete Aéreo.
+
+<br>
+<p>3. Levando em conta o estado pelo qual o deputado se elegeu, quais os estados que mais fazem uso da CEAP? Quais os que menos fazem uso? Mesmas perguntas considerando gastos em R$. Por que você acha isso?</p>
+
+Observaremos os atributos <b>sgUF</b> e <b>valorLíquido</b> apenas:
+```{r}
+gastos_por_estado <- dadosCEAP %>% 
+  select(sgUF, valorLíquido) %>% 
+  group_by(sgUF) %>%
+  summarise(gasto_total_estado = sum(valorLíquido)) %>%
+  arrange(desc(gasto_total_estado))
+```
+
+Plotando o gráfico de barras em ordem decrescente, tem-se:
+```{r}
+ggplot(gastos_por_estado, aes(x = reorder(sgUF, gasto_total_estado), y = gasto_total_estado), options(scipen = 5)) +
+  geom_bar(stat = "identity") +
+  xlab("UF") + #eixo X
+  ylab("Valor total gasto") + #eixo Y
+  coord_flip()
+```
+
+<b>São Paulo</b> e <b>Minas Gerais</b> são os estados que mais usam, enquanto o <b>Distrito Federal</b> é quem menos usa. Acredita-se que o uso do CEAP por estado tem uma relação direta com o número de deputados pertencentes a cada estado.
+
+<br>
+<p>4. Quais os parlamentares que mais gastam com CEAP e quais os que menos gastam?</p>
+
+Extrai-se os 10 parlamentares que mais gastam e os 10 que menos gastam:
+```{r}
+dep_por_gastos <- dadosCEAP %>% select(nomeParlamentar, valorLíquido) %>% 
+  group_by(nomeParlamentar) %>% 
+  summarise(gasto_total_dep = sum(valorLíquido)) %>%
+  arrange(desc(gasto_total_dep))
+
+dep_mais_gastam <- dep_por_gastos %>% head(10)
+dep_menos_gastam <- dep_por_gastos %>% tail(10) %>% arrange(gasto_total_dep)
+```
+
+
+Dado o grande número de deputados, plota-se o gráfico para um número reduzido das duas tabelas:
+```{r}
+ggplot(dep_mais_gastam, aes(x = reorder(nomeParlamentar, gasto_total_dep), y = gasto_total_dep), options(scipen=5)) +
+    geom_bar(stat = "identity") +
+    xlab("Parlamentar") + #eixo X
+    ylab("Valor total gasto") + #eixo Y
+    coord_flip()
+```
+
+```{r}
+ggplot(dep_menos_gastam, aes(x = reorder(nomeParlamentar, gasto_total_dep), y = gasto_total_dep), options(scipen=5)) +
+    geom_bar(stat = "identity") +
+    xlab("Parlamentar") + #eixo X
+    ylab("Valor total gasto") + #eixo Y
+    coord_flip()
+```
+
+
+<br>
+<p>5. Existe correlação entre a quantidade de gastos no exterior e o valor restituído da CEAP?</p>
+
+Extraindo os dados dos gastos no exterior dos deputados e o gasto total de cada deputado:
+```{r}
+gastos_exterior <- dadosCEAP %>%
+  filter(tipoDocumento == "2") %>%
+  group_by(nomeParlamentar) %>%
+  summarise(soma_gasto_exterior = sum(valorLíquido))
+
+gastos_dep <- dadosCEAP %>%
+  group_by(nomeParlamentar) %>%
+  summarise(soma_gasto = sum(valorLíquido))
+
+gastos_total_exterior <- inner_join(gastos_exterior, gastos_dep)
+```
+
+
+Plotando-se o gráfico de correlação:
+```{r}
+ggplot(gastos_total_exterior, aes(x=soma_gasto_exterior, y=soma_gasto )) +
+    geom_point(shape=1) +
+    geom_smooth(method=lm) + 
+  labs(title = "Correlação entre gastos no exterior e gasto total", x = "Gastos no exterior", y = "Gastos totais")
+```
+
