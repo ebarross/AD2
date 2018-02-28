@@ -43,13 +43,14 @@ ggplot(diff_situacao, aes(x = situacao_final, y = n), options(scipen = 5)) +
 <p><b>2. Treine: um modelo de regressão logística, uma árvore de decisão e um modelo de adaboost. Tune esses modelos usando validação cruzada e controle overfitting se necessário, considerando as particularidades de cada modelo.</b></p>
 
 <p>Para isso, é necessário separar o dataset em dois: treino e teste. Aqui será dividido em 70% e 30%, respectivamente.</p>
-
+<p>Uma partição é criada contendo os índices de 70% dos dados, que é atribuído ao dataset de treino. Da mesma forma, os outros 30% são atribuídos ao dataset de teste:</p>
 ```{r}
 particao <- createDataPartition(y = dados_eleicoes$situacao_final, p = 0.70, list = FALSE)
 
 dados_treino <- dados_eleicoes[ particao, ]
 dados_teste <- dados_eleicoes[ -particao, ]
 ```
+
 
 ```{r}
 control <- trainControl(method = "repeatedcv",
