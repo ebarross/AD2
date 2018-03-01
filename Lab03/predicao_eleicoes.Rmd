@@ -45,6 +45,9 @@ ggplot(diff_situacao, aes(x = situacao_final, y = n), options(scipen = 5)) +
 <p>Para isso, é necessário separar o dataset em dois: treino e teste. Aqui será dividido em 70% e 30%, respectivamente.</p>
 <p>Uma partição é criada contendo os índices de 70% dos dados, que é atribuído ao dataset de treino. Da mesma forma, os outros 30% são atribuídos ao dataset de teste:</p>
 ```{r}
+
+dados_eleicoes <- dados_eleicoes %>% select(-ID, -nome, -UF, -numero_cadidato, -setor_economico_receita, -setor_economico_despesa, -partido)
+
 particao <- createDataPartition(y = dados_eleicoes$situacao_final, p = 0.70, list = FALSE)
 
 dados_treino <- dados_eleicoes[ particao, ]
@@ -54,11 +57,22 @@ dados_teste <- dados_eleicoes[ -particao, ]
 
 ```{r}
 control <- trainControl(method = "repeatedcv",
-                        number = 10,
-                        repeats = 10,
-                        verboseIter = FALSE,
+                        number = 5,
+                        repeats = 5,
                         sampling = "down")
 
-formula <- as.formula(situacao_final ~ total_despesa + descricao_cor_raca + estado_civil + grau)
+
+formula <- as.formula(situacao_final ~ .)
+```
+
+```{r}
+modelO_regressao <- train(formula,
+                          data = dados_treino,
+                          method = "glm",
+                          family = "binomial",
+                          na.action = na.omit,
+                          trControl = control)
+
+summary(modelO_regressao)
 ```
 
