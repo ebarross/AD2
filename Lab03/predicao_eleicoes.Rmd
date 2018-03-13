@@ -18,6 +18,7 @@ library(dplyr)
 <p>Carregando dados com todas as variáveis:</p>
 ```{r}
 dados_eleicoes <- read.csv("train.csv", encoding = "UTF-8")
+test <- read.csv("test.csv", encoding = "UTF-8")
 ```
 <br>
 
@@ -29,15 +30,19 @@ dados_eleicoes %>% count(situacao_final)
 ```
 <br>
 
-<p>Para uma melhor visualização desse desbalanceamento, plotaremos um gráfico:</p>
+<p>Para uma melhor visualização desse desbalanceamento, plotaremos um gráfico ilustrando a proporção dos dados numa escala de 0 a 100:</p>
 ```{r}
 diff_situacao <- dados_eleicoes %>% count(situacao_final)
-ggplot(diff_situacao, aes(x = situacao_final, y = n), options(scipen = 5)) +
-  geom_bar(stat = "identity")
+
+proporcao <- (diff_situacao$n / sum(diff_situacao$n) * 100)
+
+ggplot(diff_situacao, aes(x = situacao_final, y = proporcao), options(scipen = 5)) +
+  geom_bar(stat = "identity") +
+  scale_y_continuous(breaks = seq(0, 100, by = 10))
 ```
 <br>
 
-<p>Os dados dispostos dessa forma dificulta o processo de treinamento do modelo, visto que há um viés para um dos valores da variável.</p>
+<p>Os dados dispostos dessa forma influencia no processo de treinamento do modelo, visto que há um viés para um dos valores da variável, o qual será "beneficiado" na predição por ser mais comum.</p>
 <br>
 
 <p><b>2. Treine: um modelo de regressão logística, uma árvore de decisão e um modelo de adaboost. Tune esses modelos usando validação cruzada e controle overfitting se necessário, considerando as particularidades de cada modelo.</b></p>
@@ -45,34 +50,152 @@ ggplot(diff_situacao, aes(x = situacao_final, y = n), options(scipen = 5)) +
 <p>Para isso, é necessário separar o dataset em dois: treino e teste. Aqui será dividido em 70% e 30%, respectivamente.</p>
 <p>Uma partição é criada contendo os índices de 70% dos dados, que é atribuído ao dataset de treino. Da mesma forma, os outros 30% são atribuídos ao dataset de teste:</p>
 ```{r}
-
-dados_eleicoes <- dados_eleicoes %>% select(-ID, -nome, -UF, -numero_cadidato, -setor_economico_receita, -setor_economico_despesa, -partido)
-
 particao <- createDataPartition(y = dados_eleicoes$situacao_final, p = 0.70, list = FALSE)
 
 dados_treino <- dados_eleicoes[ particao, ]
 dados_teste <- dados_eleicoes[ -particao, ]
 ```
 
-
+<p>Definindo control para treino com 10 repetições. O método utilizado para balancear os dados foi o undersampling. Definindo também a formula com a variável-resposta e os atributos selecionados para a predição:</p>
 ```{r}
 control <- trainControl(method = "repeatedcv",
-                        number = 5,
-                        repeats = 5,
+                        number = 10,
+                        repeats = 10,
                         sampling = "down")
 
-
-formula <- as.formula(situacao_final ~ .)
+formula <- as.formula(situacao_final ~ total_receita + recursos_proprios + recursos_de_partidos + total_despesa + despesa_max_campanha)
 ```
 
-```{r}
-modelO_regressao <- train(formula,
+<p>Treinando modelo com o método glm e o dataset de treino selecionado anteriormente:</p>
+```{r warning=FALSE, message=FALSE}
+modelo_regressao <- train(formula,
                           data = dados_treino,
                           method = "glm",
                           family = "binomial",
                           na.action = na.omit,
                           trControl = control)
 
-summary(modelO_regressao)
+modelo_regressao
+```
+
+<p>Treinando árvore de decisão:</p>
+```{r}
+arvore_decisao <- train(formula,
+                        data = dados_treino,
+                        method = "rpart",
+                        cp = 0.001,
+                        maxdepth = 20)
+
+arvore_decisao
+```
+
+<p>Treinando modelo com adaboost:</p>
+```{r}
+adaboost <- train(formula,
+                  data = dados_treino,
+                  method = "adaboost",
+                  trControl = control)
+```
+
+<br>
+<p><b>3. Reporte acurácia, precision, recall e f-measure no treino e validação. Como você avalia os resultados? Justifique sua resposta.</b></p>
+
+<p>Para o modelo de regressão logística:</p>
+```{r}
+dados_teste$prediction <- predict(modelo_regressao, dados_teste)
+
+confMatrix <- confusionMatrix(dados_teste$prediction, dados_teste$situacao_final)
+
+acuracia <- confMatrix$overall['Accuracy']
+precisao <- precision(confMatrix$table, relevant = "eleito")
+recall <- recall(confMatrix$table, relevant = "eleito")
+f_measure <- F_meas(confMatrix$table, relevant = "eleito")
+
+acuracia
+precisao
+recall
+f_measure
+
+```
+
+<p>Para a árvore de decisão:</p>
+```{r}
+dados_teste$prediction <- predict(arvore_decisao, dados_teste)
+
+confMatrix <- confusionMatrix(dados_teste$prediction, dados_teste$situacao_final)
+
+acuracia <- confMatrix$overall['Accuracy']
+precisao <- precision(confMatrix$table, relevant = "eleito")
+recall <- recall(confMatrix$table, relevant = "eleito")
+f_measure <- F_meas(confMatrix$table, relevant = "eleito")
+
+acuracia
+precisao
+recall
+f_measure
+```
+
+
+<p>Para o adaboost:</p>
+```{r}
+dados_teste$prediction <- predict(adaboost, dados_teste)
+
+confMatrix <- confusionMatrix(dados_teste$prediction, dados_teste$situacao_final)
+
+acuracia <- confMatrix$overall['Accuracy']
+precisao <- precision(confMatrix$table, relevant = "eleito")
+recall <- recall(confMatrix$table, relevant = "eleito")
+f_measure <- F_meas(confMatrix$table, relevant = "eleito")
+
+acuracia
+precisao
+recall
+f_measure
+```
+
+<br>
+<p><b>4. Interprete as saídas dos modelos. Quais atributos parecem ser mais importantes de acordo com cada modelo? Crie pelo menos um novo atributo que não está nos dados originais e estude o impacto desse atributo.</b></p>
+<p>Verificando importância dos atributos em cada modelo:</p>
+```{r}
+ggplot(varImp(modelo_regressao))
+
+ggplot(varImp(arvore_decisao))
+
+ggplot(varImp(adaboost))
+```
+
+<p>Escolhi por modificar o atributo descricao_ocupacao para indicar se o candidato já é deputado ou não, pois poderia ter uma maior chance de eleger-se novamente:</p>
+```{r}
+dados_eleicoes$descricao_ocupacao = ifelse(dados_eleicoes$descricao_ocupacao == "DEPUTADO", 1, 0)
+
+formula <- as.formula(situacao_final ~ total_receita + recursos_de_partidos + recursos_proprios + total_despesa + despesa_max_campanha + descricao_ocupacao)
+
+modelo_regressao <- train(formula,
+                        data = dados_treino,
+                        method = "rpart",
+                        cp = 0.001,
+                        maxdepth = 20)
+
+dados_teste$prediction <- predict(modelo_regressao, dados_teste)
+
+confMatrix <- confusionMatrix(dados_teste$prediction, dados_teste$situacao_final)
+
+acuracia <- confMatrix$overall['Accuracy']
+precisao <- precision(confMatrix$table, relevant = "eleito")
+recall <- recall(confMatrix$table, relevant = "eleito")
+f_measure <- F_meas(confMatrix$table, relevant = "eleito")
+
+acuracia
+precisao
+recall
+f_measure
+```
+<p>O modelo de regressão logística com o novo atributo possui acurácia e precisão maior, mas não há diferenças significantes em relação à recall e F-measure.</p>
+
+```{r}
+kaggle <- subset(test, select = c(ID))
+kaggle$prediction <- predict(adaboost, test)
+
+write.csv(kaggle, file = "kaggle_submission9.csv", row.names = FALSE)
 ```
 

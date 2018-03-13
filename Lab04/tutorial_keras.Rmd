@@ -1,0 +1,59 @@
+---
+title: "Tutorial Keras"
+author: "Emanoel Barros"
+date: "12 de março de 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<p><b>Keras</b> é um pacote que oferece funções para o estudo sobre modelos abordando <i>deep learning</i> no R.</p>
+
+<p>Esse tutorial terá como foco o MLP (Multi-Layer Perceptron), um tipo de Rede Neural Artificial que possui pelo menos três camadas internas compostas por nós (neurônios).</p>
+
+<h3>Instalando o pacote:</h3>
+
+<p>Primeiro, importaremos o pacote <b>devtools</b> para poder instalar os pacotes que serão necessários:</p>
+```{r warning=FALSE, message=FALSE}
+library(devtools)
+```
+
+<p>Em seguida, são importados o <b>keras</b> e <b>tensorflow</b>, para isso é necessário tê-los instalados:</p>
+```{r warning=FALSE, message=FALSE}
+# install_github("rstudio/tensorflow")
+# install_github("rstudio/keras")
+
+library(keras)
+library(tensorflow)
+
+# install_keras()
+```
+
+<h3>Carregando os dados:</h3>
+
+<p>Os dados podem ser carregados de 3 maneiras diferentes:</p>
+
+<p>Utilizando os datasets do keras:</p>
+```{r}
+mnist <- dataset_mnist()
+
+cifar10 <- dataset_cifar10()
+
+imdb <- dataset_imdb()
+```
+
+<p>Criando nosso próprio dataset com dados aleatórios a partir da função <b>matrix</b>:</p>
+```{r}
+dados <- matrix(rexp(1000*784), nrow = 1000, ncol = 784)
+
+labels <- matrix(round(runif(1000 * 10, min = 0, max = 9)),
+                 nrow = 1000, ncol = 10)
+```
+
+<p>Importando de um arquivo (CSV ou outro formato):</p>
+```{r}
+iris <- read.csv(url("http://archive.ics.uci.edu/ml/machine-learning-databases/iris/iris.data"), header = FALSE) 
+```
+
