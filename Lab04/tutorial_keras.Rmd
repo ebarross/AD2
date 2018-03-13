@@ -5,6 +5,19 @@ date: "12 de março de 2018"
 output: html_document
 ---
 
+O objetivo desse lab é o de auto-aprendizagem em uma ferramenta de deep learning. Em particular vamos aprender a implementar e interpretar uma rede do tipo multilayer perceptron (MLP) em R e Keras, um framework de deep learning.
+
+Para isso você deve:
+
+Ler o tutorial: https://www.datacamp.com/community/tutorials/keras-r-deep-learning (Links para um site externo)Links para um site externo
+Implementar os passos descritos no tutorial e organizá-los em um RMD com seus próprios comentários em português. A tarefa é basicamente reescrever o tutorial com suas próprias palavras, em português, e eventualmente de forma mais sucinta já o que o tutorial original é bastante extenso. Você pode adicionar explicações, código e dados que não estão no tutorial original, na verdade você é encorajado a fazer isso.
+Os critérios para correção serão:
+Facilidade em seguir o seu tutorial
+Se o código executa corretamente
+Bônus: Testar MLP na predição de votação do lab anterior e reportar o resultado.
+
+A entrega deve ser o envio do .Rmd e publicação no Rpubs. Quando for publicar no Rpubs não esquecer de fazer referência ao tutorial original.
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
