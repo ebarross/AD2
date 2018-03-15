@@ -1,10 +1,10 @@
 ---
-title: "Tutorial Keras"
+title: "Deep Learning com Keras"
 author: "Emanoel Barros"
 date: "12 de março de 2018"
 output: html_document
 ---
-
+<p></p>
 O objetivo desse lab é o de auto-aprendizagem em uma ferramenta de deep learning. Em particular vamos aprender a implementar e interpretar uma rede do tipo multilayer perceptron (MLP) em R e Keras, um framework de deep learning.
 
 Para isso você deve:
@@ -57,7 +57,7 @@ cifar10 <- dataset_cifar10()
 imdb <- dataset_imdb()
 ```
 
-<p>Criando nosso próprio dataset com dados aleatórios a partir da função <b>matrix</b>:</p>
+<p>Criando nosso próprio dataset com dados aleatórios a partir da função <b>matrix()</b>:</p>
 ```{r}
 dados <- matrix(rexp(1000*784), nrow = 1000, ncol = 784)
 
@@ -67,7 +67,7 @@ labels <- matrix(round(runif(1000 * 10, min = 0, max = 9)),
 
 <p>Importando de um arquivo CSV (ou outro formato):</p>
 ```{r}
-# Carregando o arquivo na variável iris, sem os nomes das colunas: 
+# Carregando o arquivo na variável iris: 
 iris <- read.csv(url("http://archive.ics.uci.edu/ml/machine-learning-databases/iris/iris.data"), header = FALSE)
 
 # Cabeçalho do dataset
@@ -88,4 +88,90 @@ dim(iris)
 
 <img src="https://s3.amazonaws.com/assets.datacamp.com/blog_assets/iris-machinelearning.png">
 
-<p>A função <b>read.csv()</b> retorna um data.frame com os dados.</p>
+<p>Adicionaremos nomes para as colunas com a função <b>names()</b> e utilizaremos a função <b>plot()</b> para visualizar a correlação entre o comprimento e a largura das pétalas:</p>
+```{r}
+# Atribuindo nomes às colunas
+names(iris) <- c("Sepala.Comprimento", "Sepala.Largura", "Petala.Comprimento", "Petala.Largura", "Especie")
+
+# Plotando o gráfico de correlação
+plot(iris$Petala.Comprimento,
+     iris$Petala.Largura,
+     pch = 21,
+     bg = c("red", "green3", "blue")[unclass(iris$Especie)],
+     xlab = "Comprimento da Petala",
+     ylab = "Largura da Petala")
+
+# Correlação geral entre os dois atributos
+cor(iris$Petala.Comprimento, iris$Petala.Largura)
+```
+<p>A função <b>unclass()</b> foi usada para mapear os nomes das espécies para valores numéricos (1, 2 e 3).</p>
+
+<p>Pelo gráfico, é possível observar que há uma correlação significativa entre o comprimento e a largura da pétala e seu valor é de <b>0.9627571</b>.</p> 
+
+<p>Precisamos verificar os outros atributos, para isso utilizamos a função <b>cor()</b> com todos os atributos. Além disso, utilizamos a função <b>corrplot()</b> do pacote de mesmo nome para ter uma melhor visão das correlações:</p>
+```{r}
+# Salvando a correção geral em M
+M <- cor(iris[,1:4])
+
+# Importando o pacote corrplot
+library(corrplot)
+
+# Plotando o gráfico de correlações com o método de círculos
+corrplot(M, method = "circle")
+```
+
+<h3>Pré-processamento dos dados</h3>
+
+<p>Antes de construírmos o modelo, é necessário termos certeza de que os dados estão limpos, normalizados e divididos entre <b>treino</b> e <b>teste</b>.</p>
+
+<p>Como estamos fazendo uso de um dataset do UCI Machine Learning Repository, podemos esperar que esses dados já estejam prontos para uso, ou seja, limpos e normalizados. Checaremos isso a seguir.</p>
+
+<h5>Normalizando os dados:</h5>
+
+<p>Iremos utilizar a função <b>normalize()</b> do keras. Para isso, precisamos ter os dados dispostos em uma matriz:</p>
+```{r}
+# Convertendo os nomes das espécies em valores numéricos
+iris[,5] <- as.numeric(iris[,5]) -1
+
+# Convertendo os dados em uma matriz
+iris <- as.matrix(iris)
+
+# Excluindo os nomes das colunas
+dimnames(iris) <- NULL
+
+# Normalizando os dados
+irisNormalizado <- normalize(iris[,1:4])
+
+# Mostrando o sumário
+summary(iris)
+summary(irisNormalizado)
+```
+
+<h5>Separando os dados:</h5>
+
+<p>Precisamos separar nosso dataset em treino e teste. Para isso, definimos um peso para cada uma das duas partições utilizando a função <b>sample()</b>:</p>
+```{r}
+# Define o tamanho das amostras
+ind <- sample(2, nrow(iris), replace = TRUE, prob = c(0.67, 0.33))
+
+# Divide os dados
+iris.treino <- iris[ind==1, 1:4]
+iris.teste <- iris[ind==2, 1:4]
+
+# Divide o atributo de classificação
+iris.treinoalvo <- iris[ind==1, 5]
+iris.testealvo <- iris[ind==2, 5]
+```
+
+<h5>Codificação One-Hot</h5>
+
+<p>Utilizaremos a função <b>to_categorical()</b> para converter os arrays com o atributo alvo para uma matriz de booleanos, que indica a qual classe pertence cada dado:</p>
+```{r}
+iris.treinoRotulos <- to_categorical(iris.treinoalvo)
+
+iris.testeRotulos <- to_categorical(iris.testealvo)
+```
+
+<h3>Construindo o Modelo</h3>
+
+<b></b>
