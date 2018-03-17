@@ -4,19 +4,8 @@ author: "Emanoel Barros"
 date: "12 de março de 2018"
 output: html_document
 ---
-<p></p>
-O objetivo desse lab é o de auto-aprendizagem em uma ferramenta de deep learning. Em particular vamos aprender a implementar e interpretar uma rede do tipo multilayer perceptron (MLP) em R e Keras, um framework de deep learning.
 
-Para isso você deve:
-
-Ler o tutorial: https://www.datacamp.com/community/tutorials/keras-r-deep-learning (Links para um site externo)Links para um site externo
-Implementar os passos descritos no tutorial e organizá-los em um RMD com seus próprios comentários em português. A tarefa é basicamente reescrever o tutorial com suas próprias palavras, em português, e eventualmente de forma mais sucinta já o que o tutorial original é bastante extenso. Você pode adicionar explicações, código e dados que não estão no tutorial original, na verdade você é encorajado a fazer isso.
-Os critérios para correção serão:
-Facilidade em seguir o seu tutorial
-Se o código executa corretamente
-Bônus: Testar MLP na predição de votação do lab anterior e reportar o resultado.
-
-A entrega deve ser o envio do .Rmd e publicação no Rpubs. Quando for publicar no Rpubs não esquecer de fazer referência ao tutorial original.
+<h4>Esse tutorial é uma adaptação do tutorial original que pode ser encontrado em: https://www.datacamp.com/community/tutorials/keras-r-deep-learning</h4>
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -109,7 +98,7 @@ cor(iris$Petala.Comprimento, iris$Petala.Largura)
 <p>Pelo gráfico, é possível observar que há uma correlação significativa entre o comprimento e a largura da pétala e seu valor é de <b>0.9627571</b>.</p> 
 
 <p>Precisamos verificar os outros atributos, para isso utilizamos a função <b>cor()</b> com todos os atributos. Além disso, utilizamos a função <b>corrplot()</b> do pacote de mesmo nome para ter uma melhor visão das correlações:</p>
-```{r}
+```{r warning=FALSE, message=FALSE}
 # Salvando a correção geral em M
 M <- cor(iris[,1:4])
 
@@ -174,4 +163,297 @@ iris.testeRotulos <- to_categorical(iris.testealvo)
 
 <h3>Construindo o Modelo</h3>
 
-<b></b>
+<p>Nosso objetivo é classificar flores de íris como <i>versicolor</i>, <i>setosa</i> ou <i>virginica</i>. Esse problema é conhecido como um perceptron multi-camadas, em que temos camadas internas totalmente conectadas com uma função de ativação, que nesse caso será a <b>ReLU</b>. Além disso, utilizaremos a função <b>softmax</b> para a camada de saída, onde teremos valores na faixa de 0 a 1.</p>
+```{r}
+# Iniciando o modelo sequencial
+modelo <- keras_model_sequential()
+
+# Adicionando as camadas internas e de saída
+modelo %>% layer_dense(units = 8, activation = "relu",
+                      input_shape = c(4)) %>% layer_dense(units = 3, activation = "softmax")
+```
+
+<p>Visualizando o modelo:</p>
+```{r}
+# Sumário
+summary(modelo)
+
+# Configuração
+get_config(modelo)
+
+# Configuração das camadas
+get_layer(modelo, index = 1)
+
+# Camadas
+modelo$layers
+
+# Entradas
+modelo$inputs
+
+# Saídas
+modelo$outputs
+```
+
+
+<h3>Compilando e treinando o modelo</h3>
+
+```{r}
+# Compilando o modelo
+modelo %>% compile(
+     loss = 'categorical_crossentropy',
+     optimizer = 'adam',
+     metrics = 'accuracy'
+ )
+```
+<p>Os parâmetros <i>loss</i> e <i>optimizer</i> são necessários para treinar o modelo. O primeiro representa a função de perda utilizada, enquanto o segundo significa o algoritmo de otimização.</p>
+
+<p>O próximo passo é treinar o modelo com os dados de treino, por 200 épocas, em lotes de 5 amostras:</p>
+```{r}
+# Treinando o modelo e guardando em 'treinamento'
+treinamento <- modelo %>% fit(
+     iris.treino, 
+     iris.treinoRotulos, 
+     epochs = 200, 
+     batch_size = 5, 
+     validation_split = 0.2
+ )
+```
+
+<h3>Visualizando o treinamento do modelo</h3>
+
+<p>O treino pode ser visto abaixo com detalhes:</p>
+```{r}
+# Plotando o gráfico
+plot(treinamento)
+```
+<p>Os gráficos acima parecem um pouco confusos. Temos um representando a perda e outro a acurácia. Veremos de forma mais clara abaixo:</p>
+
+```{r}
+# Plotando a perda dos dados de treino
+plot(treinamento$metrics$loss, main="Perda", xlab = "Epocas", ylab="Perda", col="blue", type="l")
+
+# Plotando a perda dos dados de teste
+lines(treinamento$metrics$val_loss, col="green")
+
+# Adicionando legendas
+legend("topright", c("treino","teste"), col=c("blue", "green"), lty=c(1,1))
+```
+
+
+```{r}
+# Plot the accuracy of the training data 
+plot(treinamento$metrics$acc, main="Acurácia", xlab = "Epocas", ylab="Acurácia", col="blue", type="l")
+
+# Plot the accuracy of the validation data
+lines(treinamento$metrics$val_acc, col="green")
+
+# Add Legend
+legend("bottomright", c("train","test"), col=c("blue", "green"), lty=c(1,1))
+```
+
+<p>Importante:</p>
+<ul>
+  <li>Se a acurácia dos dados de treino continua aumentando enquanto a acurácia de teste diminui, significa que estamos tendo um overfitting, isto é, nosso modelo está apenas memorizando e não aprendendo.</li>
+  <li>Se a acurácia em ambos os datasets estiver aumentando nas últimas épocas, então claramente o modelo ainda está aprendendo.</li>
+</ul>
+
+<h3>Predição de rótulos de novos dados</h3>
+
+<p>Agora que temos nosso modelo compilado e treinado, podemos fazer a predição dos dados de teste a partir da função <b>predict</b>:</p>
+```{r}
+# Predição das classes do dataset de teste
+classes <- modelo %>% predict_classes(iris.teste, batch_size = 128)
+
+# Matriz de confusão para verificar as predições
+table(iris.testealvo, classes)
+```
+
+<h3>Avaliando o modelo</h3>
+
+<p>Podemos ver a partir de uma pontuação como nosso modelo se saiu:</p>
+```{r}
+# Guardando a avaliação do modelo
+score <- modelo %>% evaluate(iris.teste, iris.testeRotulos, batch_size = 128)
+
+# Imprimindo o resultado
+print(score)
+```
+
+<h3>Ajustando o modelo</h3>
+
+<p>Na maioria das vezes precisamos fazer ajustes para o modelo a partir dos resultados obtidos. Faremos três ajustes a fim de melhorar nosso modelo:</p>
+
+<h5>1. Adicionando camadas:</h5>
+
+<p>Veremos o que acontecerá caso adicionássemos mais uma camada ao modelo:</p>
+```{r}
+# Inicializando o modelo sequencial
+modelo <- keras_model_sequential() 
+
+# Adicionando camadas
+modelo %>% 
+    layer_dense(units = 8, activation = 'relu', input_shape = c(4)) %>% 
+    layer_dense(units = 5, activation = 'relu') %>% 
+    layer_dense(units = 3, activation = 'softmax')
+
+# Compilando
+modelo %>% compile(
+     loss = 'categorical_crossentropy',
+     optimizer = 'adam',
+     metrics = 'accuracy'
+ )
+
+# Treinando
+treinamento <- modelo %>% fit(
+     iris.treino, iris.treinoRotulos, 
+     epochs = 200, batch_size = 5, 
+     validation_split = 0.2
+ )
+
+# Avaliando
+score <- modelo %>% evaluate(iris.teste, iris.testeRotulos, batch_size = 128)
+
+# Imprimindo o score
+print(score)
+```
+
+<p>Visualizando a perda e acurácia do novo modelo:</p>
+```{r}
+# Plotando a perda
+plot(treinamento$metrics$loss, main="Perda", xlab = "epocas", ylab="perda", col="blue", type="l")
+lines(treinamento$metrics$val_loss, col="green")
+legend("topright", c("treino","teste"), col=c("blue", "green"), lty=c(1,1))
+
+# Plotando a acurácia
+plot(treinamento$metrics$acc, main="Acurácia", xlab = "epocas", ylab="acuracia", col="blue", type="l")
+lines(treinamento$metrics$val_acc, col="green")
+legend("bottomright", c("treino","teste"), col=c("blue", "green"), lty=c(1,1))
+```
+
+
+<h5>2. Nós internos:</h5>
+
+<p>Veremos o efeito de adicionar mais nós nas camadas internas do nosso modelo:</p>
+```{r}
+# Inicializando o modelo sequencial
+modelo <- keras_model_sequential() 
+
+# Adicionando camadas
+modelo %>% 
+  layer_dense(units = 28, activation = 'relu', input_shape = c(4)) %>% 
+  layer_dense(units = 3, activation = 'softmax')
+
+# Compilando
+modelo %>% compile(
+     loss = 'categorical_crossentropy',
+     optimizer = 'adam',
+     metrics = 'accuracy'
+ )
+
+# Treinando
+treinamento <- modelo %>% fit(
+     iris.treino, iris.treinoRotulos, 
+     epochs = 200, batch_size = 5, 
+     validation_split = 0.2
+ )
+
+# Avaliando
+score <- modelo %>% evaluate(iris.teste, iris.testeRotulos, batch_size = 128)
+
+# Imprimindo o score
+print(score)
+```
+
+<p>É importante saber que aumentar a quantidade de nós internos nem sempre significa melhorar a performance do modelo, podendo gerar <i>overfitting</i>. No nosso caso, com um dataset pequeno, o ideal é usar uma rede com poucos nós.</p>
+
+<p>Visualizando o efeito:</p>
+```{r}
+# Plotando a perda
+plot(treinamento$metrics$loss, main="Perda", xlab = "epocas", ylab="perda", col="blue", type="l")
+lines(treinamento$metrics$val_loss, col="green")
+legend("topright", c("treino","teste"), col=c("blue", "green"), lty=c(1,1))
+
+# Plotando a acurácia
+plot(treinamento$metrics$acc, main="Acurácia", xlab = "epocas", ylab="acuracia", col="blue", type="l")
+lines(treinamento$metrics$val_acc, col="green")
+legend("bottomright", c("treino","teste"), col=c("blue", "green"), lty=c(1,1))
+```
+
+
+<h5>3. Parâmetros de otimização:</h5>
+
+<p>Tentaremos utilizar outro algoritmo de otimização (SGD), até agora estávamos usando o ADAM:</p>
+```{r}
+# Inicializando o modelo sequencial
+modelo <- keras_model_sequential() 
+
+# Adicionando camadas
+modelo %>% 
+  layer_dense(units = 28, activation = 'relu', input_shape = c(4)) %>% 
+  layer_dense(units = 3, activation = 'softmax')
+
+# Definindo o algoritmo com learning rate 0.01 (taxa de aprendizado)
+sgd <- optimizer_sgd(lr = 0.01)
+
+# Usando o algoritmo para compilar o modelo
+modelo %>% compile(optimizer = sgd,
+                   loss='categorical_crossentropy',
+                   metrics='accuracy')
+
+# Treinando
+treinamento <- modelo %>% fit(
+     iris.treino, iris.treinoRotulos, 
+     epochs = 200, batch_size = 5, 
+     validation_split = 0.2
+ )
+
+# Avaliando
+score <- modelo %>% evaluate(iris.teste, iris.testeRotulos, batch_size = 128)
+
+# Iprime as métricas de perda e acurácia
+print(score)
+```
+
+<p>Além de alterar o algoritmo de otimização, é possível também alterar a taxa de aprendizado do algoritmo. Essa é uma das técnicas mais comuns de ajuste de modelo.</p>
+
+<p>Veremos os efeitos dessa mudança:</p>
+```{r}
+# Plotando a perda
+plot(treinamento$metrics$loss, main="Perda", xlab = "epocas", ylab="perda", col="blue", type="l")
+lines(treinamento$metrics$val_loss, col="green")
+legend("topright", c("treino","teste"), col=c("blue", "green"), lty=c(1,1))
+
+# Plotando a acurácia
+plot(treinamento$metrics$acc, main="Acurácia", xlab = "epocas", ylab="acuracia", col="blue", type="l")
+lines(treinamento$metrics$val_acc, col="green")
+legend("bottomright", c("treino","teste"), col=c("blue", "green"), lty=c(1,1))
+```
+
+
+<h3>Salvando, carregando ou exportando o modelo</h3>
+
+<p>Podemos salvar nosso modelo para utilizá-lo futuramente:</p>
+```{r}
+# Salvando o modelo
+save_model_hdf5(modelo, "meu_modelo.h5")
+
+# Carregando um modelo salvo
+modelo <- load_model_hdf5("meu_modelo.h5")
+```
+
+<p>É possível também salvar os pesos do modelo:</p>
+```{r}
+save_model_weights_hdf5(modelo, "pesos_modelo.h5")
+
+modelo %>% load_model_weights_hdf5("pesos_modelo.h5")
+```
+
+<p>Também podemos exportar o modelo para JSON ou YAML:</p>
+```{r}
+json_string <- model_to_json(modelo)
+modelo <- model_from_json(json_string)
+
+yaml_string <- model_to_yaml(modelo)
+modelo <- model_from_yaml(yaml_string)
+```
+
